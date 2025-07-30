@@ -39,32 +39,30 @@ def home():
 
     return '🔁 Esperando señales desde TradingView...'
 
-def place_order(side):
-    # Aquí puedes personalizar los parámetros del orden
-    payload = {
-        "symbol": "LTC-USDT",
-        "price": "",  # Si es orden de mercado, déjalo vacío
-        "vol": "0.05",  # Cantidad en LTC
-        "side": side,
-        "type": "1",  # 1 = Orden de mercado
-        "open_type": "1",
-        "position_id": "",
-        "leverage": "5",
-        "external_oid": "",
-        "stop_loss_price": "",
-        "take_profit_price": "",
-        "position_mode": "1",
-        "timestamp": str(int(requests.get(BASE_URL + "/openApi/swap/v2/server/time").json()['serverTime']))
-    }
+def place_order(order_type):
+    print(f"📨 Recibida señal: {order_type}")
 
-    # Firma y envía la solicitud (aquí debes implementar tu firma)
-    headers = {
-        "X-BX-APIKEY": API_KEY
-    }
+    # Consultar el timestamp del servidor de BingX
+    try:
+        response = requests.get(BASE_URL + "/openApi/swap/v2/server/time")
+        print("🔎 Respuesta completa del servidor de hora:", response.text)
+        data = response.json()
+    except Exception as e:
+        print("❌ Error obteniendo timestamp:", e)
+        return
 
-    print(f"➡️ Enviando orden: {side}")
-    response = requests.post(BASE_URL + ORDER_ENDPOINT, data=payload, headers=headers)
-    print("📨 Respuesta de BingX:", response.text)
+    if "serverTime" not in data:
+        print("⚠️ Respuesta inesperada del servidor:", data)
+        return
+
+    timestamp = str(int(data["serverTime"]))
+
+    # Aquí continúa tu lógica para firmar y enviar la orden
+    print(f"✅ Timestamp del servidor: {timestamp}")
+
+    # Simulación: solo muestra el tipo de orden por ahora
+    print(f"📤 Enviando orden {order_type}... (esto es una prueba)")
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000)
