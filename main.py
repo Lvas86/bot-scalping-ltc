@@ -40,13 +40,15 @@ def home():
 
     return '🔁 Esperando señales desde TradingView...'
 
-import hmac
 import hashlib
+import hmac
+import time
+import json
 
 def place_order(order_type):
     print(f"📨 Recibida señal: {order_type}", flush=True)
 
-    # Obtener timestamp del servidor de BingX
+    # Obtener el tiempo del servidor
     try:
         response = requests.get(BASE_URL + "/openApi/swap/v2/server/time")
         print("🔎 Respuesta completa del servidor de hora:", response.text, flush=True)
@@ -55,47 +57,47 @@ def place_order(order_type):
         print("❌ Error obteniendo timestamp:", e, flush=True)
         return
 
-    if "data" not in data or "serverTime" not in data["data"]:
+    if "serverTime" not in data["data"]:
         print("⚠️ Respuesta inesperada del servidor:", data, flush=True)
         return
 
-    timestamp = str(data["data"]["serverTime"])
+    timestamp = str(int(data["data"]["serverTime"]))
     print(f"✅ Timestamp del servidor: {timestamp}", flush=True)
 
-    # Datos para la orden real
-    payload = {
-        "symbol": "LTCUSDT",
-        "side": order_type,            # BUY o SELL
-        "price": "",                   # vacío para MARKET
-        "quantity": "0.1",             # ajusta el tamaño de la orden
-        "tradeType": "MARKET",         # tipo de orden
-        "timestamp": timestamp
+    # 🔧 Parámetros obligatorios de la orden
+    params = {
+        "symbol": "LTC-USDT",
+        "price": "0",                  # Obligatorio, pero se ignora en orden de mercado
+        "vol": "1",                    # Volumen del contrato
+        "side": order_type,           # BUY o SELL
+        "type": "MARKET",             # MARKET o LIMIT
+        "positionSide": "LONG" if order_type == "BUY" else "SHORT",
+        "leverage": "1",              # Puedes cambiarlo si quieres apalancamiento
+        "openType": "ISOLATED",
+        "timestamp": timestamp,
+        "recvWindow": "5000"
     }
 
-    # Construir query string ordenado alfabéticamente
-    query_string = '&'.join([f"{key}={payload[key]}" for key in sorted(payload)])
+    # Convertir a cadena de consulta ordenada
+    query_string = '&'.join([f"{key}={params[key]}" for key in sorted(params)])
 
-    # Crear firma
-    signature = hmac.new(
-        API_SECRET.encode('utf-8'),
-        query_string.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
+    # Firmar la consulta
+    signature = hmac.new(API_SECRET.encode('utf-8'), query_string.encode('utf-8'), hashlib.sha256).hexdigest()
 
-    # URL final con firma
-    url = BASE_URL + ORDER_ENDPOINT + f"?{query_string}&signature={signature}"
+    # Agregar la firma a los parámetros
+    query_string += f"&signature={signature}"
 
-    # Encabezados
     headers = {
-        "X-BX-APIKEY": API_KEY
+        "X-BX-APIKEY": API_KEY,
+        "Content-Type": "application/x-www-form-urlencoded"
     }
 
-    # Enviar solicitud POST
     try:
-        res = requests.post(url, headers=headers)
-        print("📬 Respuesta de la orden:", res.text, flush=True)
+        url = BASE_URL + ORDER_ENDPOINT
+        response = requests.post(url, headers=headers, data=query_string)
+        print("📬 Respuesta de la orden:", response.text, flush=True)
     except Exception as e:
-        print("❌ Error al enviar orden:", e, flush=True)
+        print("❌ Error al enviar la orden:", e, flush=True)
 
 
 
