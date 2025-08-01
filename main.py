@@ -51,7 +51,8 @@ def place_order(order_type):
         print("❌ Error obteniendo timestamp:", e, flush=True)
         return
 
-    if "serverTime" not in data:
+    # ✅ Verificación correcta del timestamp
+    if "serverTime" not in data.get("data", {}):
         print("⚠️ Respuesta inesperada del servidor:", data, flush=True)
         return
 
@@ -60,6 +61,7 @@ def place_order(order_type):
 
     # Simulación: solo muestra el tipo de orden por ahora
     print(f"📤 Enviando orden {order_type}... (esto es una prueba)", flush=True)
+
 
 
 if __name__ == '__main__':
