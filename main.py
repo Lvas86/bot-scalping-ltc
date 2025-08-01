@@ -40,15 +40,12 @@ def home():
 
     return '🔁 Esperando señales desde TradingView...'
 
-import hashlib
 import hmac
-import time
-import json
+import hashlib
 
 def place_order(order_type):
     print(f"📨 Recibida señal: {order_type}", flush=True)
 
-    # Obtener el tiempo del servidor
     try:
         response = requests.get(BASE_URL + "/openApi/swap/v2/server/time")
         print("🔎 Respuesta completa del servidor de hora:", response.text, flush=True)
@@ -57,44 +54,37 @@ def place_order(order_type):
         print("❌ Error obteniendo timestamp:", e, flush=True)
         return
 
-    if "serverTime" not in data["data"]:
+    if "data" not in data or "serverTime" not in data["data"]:
         print("⚠️ Respuesta inesperada del servidor:", data, flush=True)
         return
 
     timestamp = str(int(data["data"]["serverTime"]))
     print(f"✅ Timestamp del servidor: {timestamp}", flush=True)
 
-    # 🔧 Parámetros obligatorios de la orden
-    params = {
+    # ⚙️ Datos de la orden
+    order_data = {
         "symbol": "LTC-USDT",
-        "price": "0",                  # Obligatorio, pero se ignora en orden de mercado
-        "vol": "1",                    # Volumen del contrato
-        "side": order_type,           # BUY o SELL
-        "type": "MARKET",             # MARKET o LIMIT
-        "positionSide": "LONG" if order_type == "BUY" else "SHORT",
-        "leverage": "1",              # Puedes cambiarlo si quieres apalancamiento
-        "openType": "ISOLATED",
+        "side": order_type,
+        "type": "MARKET",
+        "positionSide": "BOTH",
+        "quantity": "0.05",  # puedes ajustar este valor
         "timestamp": timestamp,
-        "recvWindow": "5000"
+        "recvWindow": "5000",
     }
 
-    # Convertir a cadena de consulta ordenada
-    query_string = '&'.join([f"{key}={params[key]}" for key in sorted(params)])
+    # 🔐 Crear la firma
+    query_string = "&".join([f"{k}={v}" for k, v in order_data.items()])
+    signature = hmac.new(API_SECRET.encode(), query_string.encode(), hashlib.sha256).hexdigest()
+    order_data["signature"] = signature
 
-    # Firmar la consulta
-    signature = hmac.new(API_SECRET.encode('utf-8'), query_string.encode('utf-8'), hashlib.sha256).hexdigest()
-
-    # Agregar la firma a los parámetros
-    query_string += f"&signature={signature}"
-
+    # 📡 Enviar la solicitud
     headers = {
-        "X-BX-APIKEY": API_KEY,
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-BX-APIKEY": API_KEY
     }
 
     try:
-        url = BASE_URL + ORDER_ENDPOINT
-        response = requests.post(url, headers=headers, data=query_string)
+        response = requests.post(BASE_URL + ORDER_ENDPOINT, headers=headers, data=order_data)
         print("📬 Respuesta de la orden:", response.text, flush=True)
     except Exception as e:
         print("❌ Error al enviar la orden:", e, flush=True)
