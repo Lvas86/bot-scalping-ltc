@@ -66,8 +66,8 @@ def place_order(order_type):
         "symbol": "LTC-USDT",
         "side": order_type,
         "type": "MARKET",
-        "positionSide": "BOTH",
-        "quantity": "0.05",  # puedes ajustar este valor
+        "positionSide": "LONG" if order_type == "buy" else "short",
+        "quantity": "0.03",  # puedes ajustar este valor
         "timestamp": timestamp,
         "recvWindow": "5000",
     }
