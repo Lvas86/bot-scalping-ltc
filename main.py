@@ -10,7 +10,7 @@ app = Flask(__name__)
 # Cargar claves desde el archivo .env
 API_KEY = os.getenv("API_KEY")
 API_SECRET = os.getenv("API_SECRET")
-BASE_URL = "https://api.bingx.com"
+BASE_URL = "https://open-api.bingx.com"
 
 # 👉 Endpoint para ejecutar órdenes
 ORDER_ENDPOINT = "/openApi/swap/v2/trade/order"
