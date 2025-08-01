@@ -55,7 +55,7 @@ def place_order(order_type):
         print("⚠️ Respuesta inesperada del servidor:", data, flush=True)
         return
 
-    timestamp = str(int(data["serverTime"]))
+    timestamp = str(int(data["data"]["servertime"]))
     print(f"✅ Timestamp del servidor: {timestamp}", flush=True)
 
     # Simulación: solo muestra el tipo de orden por ahora
