@@ -40,6 +40,10 @@ def home():
 
     return '🔁 Esperando señales desde TradingView...'
 
+import hmac
+import hashlib
+import time
+
 def place_order(order_type):
     print(f"📨 Recibida señal: {order_type}", flush=True)
 
@@ -51,16 +55,44 @@ def place_order(order_type):
         print("❌ Error obteniendo timestamp:", e, flush=True)
         return
 
-    # ✅ Verificación correcta del timestamp
     if "serverTime" not in data.get("data", {}):
         print("⚠️ Respuesta inesperada del servidor:", data, flush=True)
         return
 
-    timestamp = str(int(data["data"]["serverTime"]))
+    timestamp = str(data["data"]["serverTime"])
     print(f"✅ Timestamp del servidor: {timestamp}", flush=True)
 
-    # Simulación: solo muestra el tipo de orden por ahora
-    print(f"📤 Enviando orden {order_type}... (esto es una prueba)", flush=True)
+    params = {
+        "symbol": "LTC-USDT",
+        "price": "",  # vacío para MARKET
+        "vol": "0.1",  # cambia según tu gestión de riesgo
+        "side": "BUY" if order_type == "BUY" else "SELL",
+        "type": 1,  # MARKET ORDER
+        "openType": "ISOLATED",
+        "positionId": "",  # vacío para crear nueva posición
+        "leverage": "5",  # ajusta tu apalancamiento
+        "externalOid": str(int(time.time() * 1000)),
+        "stopLossPrice": "",
+        "takeProfitPrice": "",
+        "timestamp": timestamp
+    }
+
+    # Firma
+    query_string = '&'.join([f"{key}={value}" for key, value in sorted(params.items())])
+    signature = hmac.new(API_SECRET.encode('utf-8'), query_string.encode('utf-8'), hashlib.sha256).hexdigest()
+
+    headers = {
+        "X-BX-APIKEY": API_KEY
+    }
+
+    # Envío
+    try:
+        full_url = BASE_URL + ORDER_ENDPOINT + f"?{query_string}&sign={signature}"
+        response = requests.post(full_url, headers=headers)
+        print("📬 Respuesta de la orden:", response.text, flush=True)
+    except Exception as e:
+        print("❌ Error al enviar la orden:", e, flush=True)
+
 
 
 
