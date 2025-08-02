@@ -21,16 +21,16 @@ def home():
         data = request.get_json()
         if not data:
             print("⚠️ No se recibió JSON válido", flush=True)
-        else:
-            print("📩 Señal recibida:", data, flush=True)
-
-        if not data or "type" not in data:
             return "❌ Datos inválidos", 400
 
-        if data["type"] == "buy":
+        print("📩 Señal recibida:", data, flush=True)
+
+        order_type = data["type"].lower()
+
+        if order_type == "buy":
             print("📤 Ejecutando orden BUY para LTCUSDT...", flush=True)
             place_order("BUY")
-        elif data["type"] == "sell":
+        elif order_type == "sell":
             print("📤 Ejecutando orden SELL para LTCUSDT...", flush=True)
             place_order("SELL")
         else:
@@ -39,6 +39,7 @@ def home():
         return "✅ Orden procesada", 200
 
     return '🔁 Esperando señales desde TradingView...'
+
 
 import hmac
 import hashlib
