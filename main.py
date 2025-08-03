@@ -72,7 +72,7 @@ def place_order(order_type):
         "side": order_type,
         "type": "MARKET",
         "positionSide": "LONG" if order_type == "BUY" else "SHORT",
-        "quantity": "0.03",  # puedes ajustar este valor
+        "quantity": "0.8",  # puedes ajustar este valor
         "timestamp": timestamp,
         "recvWindow": "5000",
     }
