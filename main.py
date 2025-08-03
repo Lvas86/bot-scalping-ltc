@@ -17,20 +17,23 @@ ORDER_ENDPOINT = "/openApi/swap/v2/trade/order"
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    print(f"📥 Método recibido: {request.method}", flush=True)
+    print(f"📦 Cuerpo crudo: {request.data}", flush=True)
+
     if request.method == 'POST':
         data = request.get_json()
         if not data:
             print("⚠️ No se recibió JSON válido", flush=True)
+        else:
+            print("📩 Señal recibida:", data, flush=True)
+
+        if not data or "type" not in data:
             return "❌ Datos inválidos", 400
 
-        print("📩 Señal recibida:", data, flush=True)
-
-        order_type = data["type"].lower()
-
-        if order_type == "buy":
+        if data["type"].lower() == "buy":
             print("📤 Ejecutando orden BUY para LTCUSDT...", flush=True)
             place_order("BUY")
-        elif order_type == "sell":
+        elif data["type"].lower() == "sell":
             print("📤 Ejecutando orden SELL para LTCUSDT...", flush=True)
             place_order("SELL")
         else:
@@ -39,6 +42,7 @@ def home():
         return "✅ Orden procesada", 200
 
     return '🔁 Esperando señales desde TradingView...'
+
 
 
 import hmac
