@@ -2,7 +2,6 @@ import hmac
 import hashlib
 import requests
 import os
-import time
 from flask import Flask, request
 from dotenv import load_dotenv
 
@@ -13,7 +12,7 @@ API_SECRET = os.getenv("API_SECRET")
 BASE_URL = "https://open-api.bingx.com"
 ORDER_ENDPOINT = "/openApi/swap/v2/trade/order"
 LEVERAGE_ENDPOINT = "/openApi/swap/v2/user/leverage"
-POSITION_ENDPOINT = "/openApi/swap/v2/user/positions"
+POSITIONS_ENDPOINT = "/openApi/swap/v2/user/positions"
 
 app = Flask(__name__)
 
@@ -117,31 +116,30 @@ def place_order(order_type):
             avg_price = float(order_resp["data"]["order"]["avgPrice"])
             qty = order_resp["data"]["order"]["executedQty"]
 
-            tp_price = round(avg_price * 1.01, 2)
-            sl_price = round(avg_price * 0.99, 2)
+            if order_type == "BUY":
+                tp_price = round(avg_price * 1.01, 2)
+                sl_price = round(avg_price * 0.99, 2)
+            else:
+                tp_price = round(avg_price * 0.99, 2)
+                sl_price = round(avg_price * 1.01, 2)
 
             print(f"🎯 TP en {tp_price}, 🛑 SL en {sl_price}", flush=True)
 
-            # Esperar 2 segundos para asegurar que la posición esté activa
-            time.sleep(2)
+            # Verificar posición activa
+            try:
+                pos_resp = requests.get(BASE_URL + POSITIONS_ENDPOINT + f"?symbol=LTC-USDT", headers={
+                    "X-BX-APIKEY": API_KEY
+                })
+                print("📊 Verificación de posición activa:", pos_resp.text, flush=True)
+            except Exception as e:
+                print("⚠️ Error al consultar posiciones:", e, flush=True)
 
-            # Verificar si la posición está activa antes de poner TP/SL
-            pos_timestamp = str(int(time.time() * 1000))
-            pos_query = f"symbol=LTC-USDT&timestamp={pos_timestamp}&recvWindow=5000"
-            pos_sig = hmac.new(API_SECRET.encode(), pos_query.encode(), hashlib.sha256).hexdigest()
-            pos_headers = {
-                "X-BX-APIKEY": API_KEY
-            }
-            pos_url = f"{BASE_URL}{POSITION_ENDPOINT}?{pos_query}&signature={pos_sig}"
-            pos_response = requests.get(pos_url, headers=pos_headers)
-            print(f"📊 Verificación de posición activa: {pos_response.text}", flush=True)
-
-            for order_type, price in [("TP", tp_price), ("SL", sl_price)]:
+            for tp_sl_type, price in [("TP", tp_price), ("SL", sl_price)]:
                 odata = {
                     "symbol": "LTC-USDT",
-                    "side": "SELL",
-                    "type": "TAKE_PROFIT_MARKET" if order_type == "TP" else "STOP_MARKET",
-                    "positionSide": "LONG" if order_data["positionSide"] == "LONG" else "SHORT",
+                    "side": "SELL" if order_type == "BUY" else "BUY",
+                    "type": "TAKE_PROFIT_MARKET" if tp_sl_type == "TP" else "STOP_MARKET",
+                    "positionSide": "LONG" if order_type == "BUY" else "SHORT",
                     "quantity": qty,
                     "stopPrice": price,
                     "timestamp": timestamp,
@@ -150,7 +148,7 @@ def place_order(order_type):
                 q_str = "&".join([f"{k}={v}" for k, v in odata.items()])
                 odata["signature"] = hmac.new(API_SECRET.encode(), q_str.encode(), hashlib.sha256).hexdigest()
                 r = requests.post(BASE_URL + ORDER_ENDPOINT, headers=headers, data=odata)
-                print(f"📦 Orden {order_type} enviada: {r.text}", flush=True)
+                print(f"📦 Orden {tp_sl_type} enviada: {r.text}", flush=True)
     except Exception as e:
         print("⚠️ Error al calcular o enviar TP/SL:", e, flush=True)
 
