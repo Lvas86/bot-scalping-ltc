@@ -31,6 +31,10 @@ def home():
         if not data or "type" not in data:
             return "❌ Datos inválidos", 400
 
+        if has_open_position():
+            print("🚫 Ya hay una posición abierta. Esperando a que se cierre.", flush=True)
+            return "⚠️ Posición ya abierta", 200
+
         if data["type"].lower() == "buy":
             print("📤 Ejecutando orden BUY para LTCUSDT...", flush=True)
             place_order("BUY")
@@ -43,6 +47,25 @@ def home():
         return "✅ Orden procesada", 200
 
     return '🔁 Esperando señales desde TradingView...'
+
+def has_open_position():
+    try:
+        timestamp = str(int(requests.get(BASE_URL + "/openApi/swap/v2/server/time").json()["data"]["serverTime"]))
+        params = f"symbol=LTC-USDT&timestamp={timestamp}&recvWindow=5000"
+        signature = hmac.new(API_SECRET.encode(), params.encode(), hashlib.sha256).hexdigest()
+        url = f"{BASE_URL}{POSITIONS_ENDPOINT}?{params}&signature={signature}"
+        headers = {"X-BX-APIKEY": API_KEY}
+        response = requests.get(url, headers=headers)
+        print("📊 Respuesta verificación de posición (bloqueo de duplicadas):", response.text, flush=True)
+        if response.status_code == 200:
+            data = response.json().get("data", [])
+            for pos in data:
+                if pos.get("positionAmt") and float(pos["positionAmt"]) != 0.0:
+                    return True
+        return False
+    except Exception as e:
+        print("⚠️ Error al verificar posición activa:", e, flush=True)
+        return False
 
 def place_order(order_type):
     print(f"📨 Recibida señal: {order_type}", flush=True)
@@ -125,15 +148,6 @@ def place_order(order_type):
 
             print(f"🎯 TP en {tp_price}, 🛑 SL en {sl_price}", flush=True)
 
-            # Verificar posición activa
-            try:
-                pos_resp = requests.get(BASE_URL + POSITIONS_ENDPOINT + f"?symbol=LTC-USDT", headers={
-                    "X-BX-APIKEY": API_KEY
-                })
-                print("📊 Verificación de posición activa:", pos_resp.text, flush=True)
-            except Exception as e:
-                print("⚠️ Error al consultar posiciones:", e, flush=True)
-
             for tp_sl_type, price in [("TP", tp_price), ("SL", sl_price)]:
                 odata = {
                     "symbol": "LTC-USDT",
@@ -154,4 +168,3 @@ def place_order(order_type):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000)
-
