@@ -2,6 +2,7 @@ import hmac
 import hashlib
 import requests
 import os
+import time
 from flask import Flask, request
 from dotenv import load_dotenv
 
@@ -12,6 +13,7 @@ API_SECRET = os.getenv("API_SECRET")
 BASE_URL = "https://open-api.bingx.com"
 ORDER_ENDPOINT = "/openApi/swap/v2/trade/order"
 LEVERAGE_ENDPOINT = "/openApi/swap/v2/user/leverage"
+POSITION_ENDPOINT = "/openApi/swap/v2/user/positions"
 
 app = Flask(__name__)
 
@@ -120,12 +122,26 @@ def place_order(order_type):
 
             print(f"🎯 TP en {tp_price}, 🛑 SL en {sl_price}", flush=True)
 
+            # Esperar 2 segundos para asegurar que la posición esté activa
+            time.sleep(2)
+
+            # Verificar si la posición está activa antes de poner TP/SL
+            pos_timestamp = str(int(time.time() * 1000))
+            pos_query = f"symbol=LTC-USDT&timestamp={pos_timestamp}&recvWindow=5000"
+            pos_sig = hmac.new(API_SECRET.encode(), pos_query.encode(), hashlib.sha256).hexdigest()
+            pos_headers = {
+                "X-BX-APIKEY": API_KEY
+            }
+            pos_url = f"{BASE_URL}{POSITION_ENDPOINT}?{pos_query}&signature={pos_sig}"
+            pos_response = requests.get(pos_url, headers=pos_headers)
+            print(f"📊 Verificación de posición activa: {pos_response.text}", flush=True)
+
             for order_type, price in [("TP", tp_price), ("SL", sl_price)]:
                 odata = {
                     "symbol": "LTC-USDT",
-                    "side": "SELL" if order_type == "TP" else "SELL",
+                    "side": "SELL",
                     "type": "TAKE_PROFIT_MARKET" if order_type == "TP" else "STOP_MARKET",
-                    "positionSide": "LONG",
+                    "positionSide": "LONG" if order_data["positionSide"] == "LONG" else "SHORT",
                     "quantity": qty,
                     "stopPrice": price,
                     "timestamp": timestamp,
@@ -140,3 +156,4 @@ def place_order(order_type):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=3000)
+
