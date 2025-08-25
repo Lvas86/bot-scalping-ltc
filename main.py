@@ -140,11 +140,11 @@ def place_order(order_type):
             qty = order_resp["data"]["order"]["executedQty"]
 
             if order_type == "BUY":
-                tp_price = round(avg_price * 1.01, 2)
+                tp_price = round(avg_price * 1.017, 2)
                 sl_price = round(avg_price * 0.99, 2)
             else:
                 tp_price = round(avg_price * 0.99, 2)
-                sl_price = round(avg_price * 1.01, 2)
+                sl_price = round(avg_price * 1.017, 2)
 
             print(f"🎯 TP en {tp_price}, 🛑 SL en {sl_price}", flush=True)
 
