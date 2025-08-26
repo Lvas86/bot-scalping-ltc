@@ -143,8 +143,8 @@ def place_order(order_type):
                 tp_price = round(avg_price * 1.017, 2)
                 sl_price = round(avg_price * 0.99, 2)
             else:
-                tp_price = round(avg_price * 0.99, 2)
-                sl_price = round(avg_price * 1.017, 2)
+                tp_price = round(avg_price * 0.983, 2)
+                sl_price = round(avg_price * 1.01, 2)
 
             print(f"🎯 TP en {tp_price}, 🛑 SL en {sl_price}", flush=True)
 
